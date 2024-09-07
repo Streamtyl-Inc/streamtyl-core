@@ -32,7 +32,7 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
   });
 
-  await app.listen(5000);
+  await app.listen(5002);
 
   app.use(helmet());
   app.use(helmet.xssFilter());
