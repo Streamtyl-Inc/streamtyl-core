@@ -1,33 +1,18 @@
-import {
-  BadRequestException,
-  forwardRef,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { assign } from 'lodash';
 import { Repository } from 'typeorm';
-import { MakeAdminDto } from './dto/make-admin.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { Role, User } from './entities/user.entity';
-import { IdentityService } from '../identity/identity.service';
-import { UserBank } from './entities/user-bank.entity';
-import { CreateUserBankInfoDto } from './dto/create-user-bank-info.dto';
-import { UpdateUserBankInfoDto } from './dto/update-user-bank-info.dto';
-import { OrderService } from '../order/order.service';
-import { paginate, PaginateQuery } from 'nestjs-paginate';
+import { User } from './entities/user.entity';
+import { WalletService } from 'src/wallet/wallet.service';
+import { CreateWalletDto } from 'src/wallet/dto/create-wallet.dto';
+import { UpdateWalletDto } from 'src/wallet/dto/update-wallet.dto';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
-    @InjectRepository(UserBank)
-    private readonly userBankRepository: Repository<UserBank>,
-    @Inject(forwardRef(() => IdentityService))
-    private readonly identityService: IdentityService,
-    @Inject(forwardRef(() => OrderService))
-    private readonly orderService: OrderService,
+    private readonly walletService: WalletService,
   ) {}
 
   async getProfile(id: string) {
@@ -39,8 +24,6 @@ export class UserService {
     delete user.password_changed_at;
     delete user.password_reset_token;
     delete user.password_reset_token_expires;
-    delete user.pin;
-    delete user.verification_code;
 
     return user;
   }
@@ -72,112 +55,34 @@ export class UserService {
     delete user.password_changed_at;
     delete user.password_reset_token;
     delete user.password_reset_token_expires;
-    delete user.pin;
-    delete user.verification_code;
 
     return user;
   }
 
-  async makeAdmin(makeAdminDto: MakeAdminDto) {
-    const user = await this.findByEmail(makeAdminDto.email);
-
-    if (user.roles.includes(Role.ADMIN))
-      throw new BadRequestException('user is already an admin');
-
-    user.roles = [...user.roles, Role.ADMIN];
-
-    await this.userRepository.save(user);
-
-    delete user.password;
-    delete user.password_changed_at;
-    delete user.password_reset_token;
-    delete user.password_reset_token_expires;
-    delete user.pin;
-    delete user.verification_code;
-
-    return user;
-  }
-
-  async makeManager(makeAdminDto: MakeAdminDto) {
-    const user = await this.findByEmail(makeAdminDto.email);
-
-    if (user.roles.includes(Role.MANAGER))
-      throw new BadRequestException('user is already a manager');
-
-    user.roles = [...user.roles, Role.MANAGER];
-
-    await this.userRepository.save(user);
-
-    delete user.password;
-    delete user.password_changed_at;
-    delete user.password_reset_token;
-    delete user.password_reset_token_expires;
-    delete user.pin;
-    delete user.verification_code;
-
-    return user;
-  }
-
-  async getUserIdentity(userId: string) {
-    return await this.identityService.getUserIdentity(userId, true);
-  }
-
-  async getUserBanksInfo(userId: string, query: PaginateQuery) {
-    const queryBuilder = this.userBankRepository
-      .createQueryBuilder('user-bank')
-      .leftJoin('user-bank.user', 'user')
-      .where('user.id = :id', { id: userId });
-
-    return await paginate(query, queryBuilder, {
-      sortableColumns: ['created_at'],
-      nullSort: 'last',
-      defaultSortBy: [['created_at', 'DESC']],
-      searchableColumns: [],
-      filterableColumns: {},
-    });
-  }
-
-  async createUserBankInfo(
-    userId: string,
-    createUserBankInfoDto: CreateUserBankInfoDto,
-  ) {
-    const existingUserBankInfo = await this.userBankRepository.findOneBy({
-      account_number: createUserBankInfoDto.account_number,
-    });
-
+  async createWallet(userId: string, createWalletDto: CreateWalletDto) {
     const user = await this.findOne(userId);
 
-    if (existingUserBankInfo)
-      throw new BadRequestException('bank account already exists');
+    const wallet = await this.walletService.create(createWalletDto);
 
-    const userBankInfo = this.userBankRepository.create(createUserBankInfoDto);
+    user.wallet = wallet;
 
-    userBankInfo.user = user;
+    await this.userRepository.save(user);
 
-    await this.userBankRepository.save(userBankInfo);
-
-    delete userBankInfo.user;
-
-    return userBankInfo;
+    return wallet;
   }
 
-  async updateUserBankInfo(
-    id: string,
-    updateUserBankInfoDto: UpdateUserBankInfoDto,
-  ) {
-    const userBankInfo = await this.userBankRepository.findOneBy({ id });
-
-    if (!userBankInfo)
-      throw new NotFoundException('bank information not found');
-
-    assign(userBankInfo, updateUserBankInfoDto);
-
-    await this.userBankRepository.save(userBankInfo);
-
-    return userBankInfo;
+  async updateWallet(updateWalletDto: UpdateWalletDto) {
+    return await this.walletService.update(
+      updateWalletDto.wallet_id,
+      updateWalletDto,
+    );
   }
 
-  async getUserOrders(userId: string, query: PaginateQuery) {
-    return await this.orderService.getUserOrder(userId, query);
+  async getWallet(userId: string) {
+    const user = await this.findOne(userId);
+
+    if (!user.wallet) throw new NotFoundException('wallet not found');
+
+    return user.wallet;
   }
 }

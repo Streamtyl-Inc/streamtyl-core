@@ -1,15 +1,22 @@
-import { BeforeInsert, Column, Entity, Index } from 'typeorm';
-import { BaseTable } from '../../base/base.table';
+import * as bcrypt from 'bcrypt';
 import {
-  IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
   IsString,
   IsUrl,
 } from 'class-validator';
-import * as bcrypt from 'bcrypt';
 import { capitalize } from 'lodash';
+import { Wallet } from 'src/wallet/entities/wallet.entity';
+import {
+  BeforeInsert,
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  OneToOne,
+} from 'typeorm';
+import { BaseTable } from '../../base/base.table';
 
 export enum Role {
   USER = 'user',
@@ -36,10 +43,6 @@ export class User extends BaseTable {
   @IsEnum(Role)
   roles: Role[];
 
-  @Column({ type: 'varchar', default: null })
-  @IsString()
-  phone: string;
-
   @Column({ type: 'text' })
   @IsString()
   password: string;
@@ -52,21 +55,9 @@ export class User extends BaseTable {
   @IsString()
   password_reset_token: string;
 
-  @Column({ type: 'text', default: null })
-  @IsString()
-  pin: string;
-
   @Column({ type: 'varchar', default: null })
   @IsUrl()
   avatar: string;
-
-  @Column({ type: 'boolean', default: false })
-  @IsBoolean()
-  is_verified: boolean;
-
-  @Column({ type: 'varchar', default: null, nullable: true })
-  @IsString()
-  verification_code: string;
 
   @Column({
     type: 'timestamp',
@@ -75,6 +66,10 @@ export class User extends BaseTable {
   })
   @IsDateString()
   password_reset_token_expires: Date;
+
+  @OneToOne(() => Wallet)
+  @JoinColumn()
+  wallet: Wallet;
 
   async hashPassword(password: string) {
     const salt = await bcrypt.genSalt(12);

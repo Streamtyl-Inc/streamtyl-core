@@ -10,11 +10,6 @@ import { Repository } from 'typeorm';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
-import { CreatePinDto } from './dto/create-pin.dto';
-import { random } from 'lodash';
-import { VerifiyAccountDto } from './dto/verifiy-account.dto';
-import { ResetPinDto } from './dto/reset-pin.dto';
-import { StripeService } from 'src/stripe/stripe.service';
 
 export type ReqUser = {
   user: { id: string; roles: Role[] };
@@ -25,7 +20,6 @@ export class AuthService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
-    private readonly stripeService: StripeService,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -38,8 +32,6 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
       role: user.roles,
-      is_verified: user.is_verified,
-      has_pin: user.has_pin,
     };
   }
 
@@ -59,8 +51,6 @@ export class AuthService {
 
     await this.userRepository.save(user);
 
-    await this.stripeService.createCustomer(user.id);
-
     const payload = { roles: user.roles, sub: user.id };
 
     return {
@@ -78,7 +68,7 @@ export class AuthService {
     if (user && (await user.verifyPassword(password, user.password))) {
       const { id, roles } = user;
 
-      return { id, roles, is_verified: user.is_verified, has_pin: !!user.pin };
+      return { id, roles };
     } else {
       throw new BadRequestException('invalid credentials');
     }
@@ -108,82 +98,5 @@ export class AuthService {
     await this.userRepository.save(user);
 
     return { message: 'password changed successfully' };
-  }
-
-  async createPin(id: string, createPinDto: CreatePinDto) {
-    const user = await this.findOne(id);
-
-    user.pin = await user.hashPassword(createPinDto.pin);
-
-    await this.userRepository.save(user);
-
-    return { message: 'pin created successfully' };
-  }
-
-  async verifyPin(id: string, verifyPinDto: CreatePinDto) {
-    const user = await this.findOne(id);
-
-    if (!(await user.verifyPassword(verifyPinDto.pin, user.pin))) {
-      throw new BadRequestException('invalid security pin!');
-    }
-
-    return { message: 'security pin verified successfully' };
-  }
-
-  async changeSecurityPin(id: string, resetPinDto: ResetPinDto) {
-    const user = await this.findOne(id);
-
-    if (!(await user.verifyPassword(resetPinDto.current_pin, user.pin))) {
-      throw new BadRequestException('invalid current security pin!');
-    }
-
-    user.pin = await user.hashPassword(resetPinDto.pin);
-
-    await this.userRepository.save(user);
-
-    return { message: 'security pin changed successfully' };
-  }
-
-  async accountVerification(id: string) {
-    const user = await this.findOne(id);
-
-    if (user.is_verified)
-      throw new BadRequestException('your account is already verified');
-
-    const randomNumber = random(100000, 999999);
-
-    user.verification_code = await user.hashPassword(randomNumber.toString());
-
-    await this.userRepository.save(user);
-
-    // todo => send unencrypted number to user's email
-
-    console.log(randomNumber);
-
-    return {
-      message: 'verification code sent to your email',
-    };
-  }
-
-  async handleAccountVerification(
-    id: string,
-    verifyAccountDto: VerifiyAccountDto,
-  ) {
-    const user = await this.findOne(id);
-
-    if (
-      !(await user.verifyPassword(
-        verifyAccountDto.code.toString(),
-        user.verification_code,
-      ))
-    ) {
-      throw new BadRequestException('invalid code');
-    }
-
-    user.is_verified = true;
-
-    await this.userRepository.save(user);
-
-    return { message: 'account verified successfully' };
   }
 }
