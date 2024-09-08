@@ -22,7 +22,7 @@ async function bootstrap() {
     region: configService.get('AWS_REGION'),
   });
 
-  const logger = new Logger('Koin point core service');
+  const logger = new Logger('core service');
   app.use(morgan('dev'));
   app.use(errorHandler);
   app.useGlobalPipes(new ValidationPipe());
