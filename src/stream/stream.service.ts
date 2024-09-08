@@ -68,10 +68,11 @@ export class StreamService {
     const queryBuilder = this.streamRepository
       .createQueryBuilder('streams')
       .leftJoinAndSelect('streams.user', 'user')
-      .leftJoinAndSelect('user.wallet', 'wallet')
       .leftJoinAndSelect('streams.thumbnail', 'thumbnail')
+      .leftJoinAndSelect('user.wallet', 'wallet')
       .select([
         'streams',
+        'thumbnail',
         'user.id',
         'user.firstname',
         'user.lastname',
