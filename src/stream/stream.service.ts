@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import sharp from 'sharp';
+import * as sharp from 'sharp';
 import { Comment } from 'src/comment/entities/comment.entity';
 import { FileType } from 'src/file/entities/file.entity';
 import { FileService, Folders } from 'src/file/file.service';

@@ -14,6 +14,7 @@ import { FileModule } from './file/file.module';
 import { CommentModule } from './comment/comment.module';
 import { APP_GUARD } from '@nestjs/core';
 import { WalletModule } from './wallet/wallet.module';
+import { PostModule } from './post/post.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { WalletModule } from './wallet/wallet.module';
     FileModule,
     CommentModule,
     WalletModule,
+    PostModule,
   ],
   controllers: [AppController],
   providers: [

@@ -42,7 +42,7 @@ export class Stream extends BaseTable {
   @Column({ type: 'varchar', default: null })
   recording_url: string;
 
-  @Column({ type: 'timestamp', default: null })
+  @Column({ type: 'varchar', default: null })
   @IsDate()
   streaming_time: Date;
 
