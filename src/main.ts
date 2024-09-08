@@ -10,6 +10,7 @@ import { config } from 'aws-sdk';
 import * as csurf from 'csurf';
 
 const localhost = new RegExp('^https?://localhost*(:[0-9]+)?(/.*)?$');
+const streamtyl = new RegExp('https?://([a-z0-9]+[.])*streamtyl[.]xyz');
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -28,7 +29,7 @@ async function bootstrap() {
 
   app.enableCors({
     credentials: true,
-    origin: [localhost],
+    origin: [localhost, streamtyl],
     optionsSuccessStatus: 204,
   });
 
